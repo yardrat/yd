@@ -1,23 +1,21 @@
 package main
 
 import (
-	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"strconv"
 )
 
 var DefaultSsh = &Ssh{}
 
 type Ssh struct{}
 
-func (s *Ssh) Connect(keypath, username, hostname, port string) (*ssh.Client, error) {
-	_, err := strconv.Atoi(port)
-	if err != nil {
-		logger.Fatalf("%s is not a valid port number", port)
-	}
+func (s *Ssh) Ping(data *ConnectionData) error {
+	_, err := s.Connect(data)
+	return err
+}
 
-	buffer, err := ioutil.ReadFile(keypath)
+func (s *Ssh) Connect(data *ConnectionData) (*ssh.Client, error) {
+	buffer, err := ioutil.ReadFile(data.key)
 	if err != nil {
 		logger.Fatalf("error while opening file %v", err)
 	}
@@ -28,11 +26,11 @@ func (s *Ssh) Connect(keypath, username, hostname, port string) (*ssh.Client, er
 	}
 
 	config := &ssh.ClientConfig{
-		User: username,
+		User: data.user,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(key),
 		},
 	}
-	connectionString := fmt.Sprintf("%s:%s", hostname, port)
-	return ssh.Dial("tcp", connectionString, config)
+	client, err := ssh.Dial("tcp", data.String(), config)
+	return client, err
 }

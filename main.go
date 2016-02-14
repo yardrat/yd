@@ -15,32 +15,26 @@ var (
 	SshUserFlag = cli.StringFlag{Name: "ssh-user, U", Value: "ubuntu", Usage: "ssh user name", EnvVar: "YD_SSH_USER"}
 )
 
-func require(flagName string, c *cli.Context) {
-	value := c.String(flagName)
-	if len(value) <= 0 {
-		logger.Fatalf("flag '%s' is missing", flagName)
-	}
-}
-
 func Ping(c *cli.Context) {
-	require("ssh-key", c)
-	require("ssh-host", c)
+	data := ReadConnectionData(c)
 
-	key := c.String("ssh-key")
-	user := c.String("ssh-user")
-	host := c.String("ssh-host")
-	port := c.String("ssh-port")
-
-	if _, err := DefaultSsh.Connect(key, user, host, port); err != nil {
-		logger.Fatalf("error while connecting to %s@'%s:%s'\n%v", user, host, port, err)
+	if err := DefaultSsh.Ping(data); err != nil {
+		logger.Fatalf("error while connecting to %v'\n%v", c, err)
 	} else {
 		logger.Printf("OK")
 	}
 }
 
+func Connect(c *cli.Context) {
+	data := ReadConnectionData(c)
+	logger.Printf("connected to %s", data)
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "yd"
+	app.Version = "0.1.0"
+	app.Flags = []cli.Flag{SshKeyFlag, SshHostFlag, SshPortFlag, SshUserFlag}
 	app.Commands = []cli.Command{
 		{
 			Name:    "ping",
@@ -48,6 +42,13 @@ func main() {
 			Usage:   "checks that the remote connection is working properly",
 			Flags:   []cli.Flag{SshKeyFlag, SshHostFlag, SshPortFlag, SshUserFlag},
 			Action:  Ping,
+		},
+		{
+			Name:    "connect",
+			Aliases: []string{"add"},
+			Usage:   "connects to the remote host ",
+			Flags:   []cli.Flag{SshKeyFlag, SshHostFlag, SshPortFlag, SshUserFlag},
+			Action:  Connect,
 		},
 	}
 	app.Run(os.Args)

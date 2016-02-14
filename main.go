@@ -34,7 +34,6 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "yd"
 	app.Version = "0.1.0"
-	app.Flags = []cli.Flag{SshKeyFlag, SshHostFlag, SshPortFlag, SshUserFlag}
 	app.Commands = []cli.Command{
 		{
 			Name:    "ping",

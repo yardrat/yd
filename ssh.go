@@ -9,11 +9,6 @@ var DefaultSsh = &Ssh{}
 
 type Ssh struct{}
 
-func (s *Ssh) Ping(data *ConnectionData) error {
-	_, err := s.Connect(data)
-	return err
-}
-
 func (s *Ssh) Connect(data *ConnectionData) (*ssh.Client, error) {
 	buffer, err := ioutil.ReadFile(data.key)
 	if err != nil {
@@ -33,4 +28,9 @@ func (s *Ssh) Connect(data *ConnectionData) (*ssh.Client, error) {
 	}
 	client, err := ssh.Dial("tcp", data.String(), config)
 	return client, err
+}
+
+func (s *Ssh) Ping(data *ConnectionData) error {
+	_, err := s.Connect(data)
+	return err
 }

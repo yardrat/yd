@@ -2,9 +2,7 @@ package main
 
 import (
 	"github.com/codegangsta/cli"
-	"io"
 	"log"
-	"net"
 	"os"
 )
 
@@ -33,49 +31,8 @@ func Connect(c *cli.Context) {
 	data := ReadConnectionData(c)
 	tunnel := ReadTunnelPorts(c)
 
-	client, err := DefaultSsh.Connect(data)
-	if err != nil {
-		logger.Fatalf("error while connecting to %s\n%v", data.String(), err)
-	}
-
-	listener, err := client.Listen("tcp", tunnel.RemoteConnectionString())
-	if err != nil {
-		logger.Fatalf("error while opening port 8080 on remote host\n%v", err)
-	}
-	defer listener.Close()
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		go func(cx net.Conn) {
-			local, err := net.Dial("tcp", tunnel.LocalConnectionString())
-			if err != nil {
-				logger.Fatalf("error while connecting to localhost:8080\n%v", err)
-			}
-
-			copyConn := func(writer, reader net.Conn) {
-				_, err := io.Copy(writer, reader)
-				if err != nil {
-					logger.Fatalf("io.Copy error: %v", err)
-				}
-			}
-
-			copyConnAndClose := func(writer, reader net.Conn) {
-				_, err := io.Copy(writer, reader)
-				if err != nil {
-					logger.Fatalf("io.Copy error: %v", err)
-				}
-				writer.Close()
-			}
-
-			go copyConn(local, cx)
-			go copyConnAndClose(cx, local)
-		}(conn)
-	}
-
+	// establish the tunnel and block.
+	DefaultSsh.Tunnel(data, tunnel)
 }
 
 func main() {

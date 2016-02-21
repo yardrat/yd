@@ -11,10 +11,12 @@ import (
 var logger = log.New(os.Stdout, "", 0)
 
 var (
-	SshKeyFlag  = cli.StringFlag{Name: "ssh-key, i", Usage: "your private ssh key", EnvVar: "YD_SSH_KEY"}
-	SshHostFlag = cli.StringFlag{Name: "ssh-host, H", Usage: "target server hostname or ip", EnvVar: "YD_SSH_HOST"}
-	SshPortFlag = cli.StringFlag{Name: "ssh-port, P", Value: "22", Usage: "target server port", EnvVar: "YD_SSH_PORT"}
-	SshUserFlag = cli.StringFlag{Name: "ssh-user, U", Value: "ubuntu", Usage: "ssh user name", EnvVar: "YD_SSH_USER"}
+	SshKeyFlag       = cli.StringFlag{Name: "ssh-key, i", Usage: "your private ssh key", EnvVar: "YD_SSH_KEY"}
+	SshHostFlag      = cli.StringFlag{Name: "ssh-host, H", Usage: "target server hostname or ip", EnvVar: "YD_SSH_HOST"}
+	SshPortFlag      = cli.StringFlag{Name: "ssh-port, P", Value: "22", Usage: "target server port", EnvVar: "YD_SSH_PORT"}
+	SshUserFlag      = cli.StringFlag{Name: "ssh-user, U", Value: "ubuntu", Usage: "ssh user name", EnvVar: "YD_SSH_USER"}
+	TunnelLocalPort  = cli.StringFlag{Name: "local-port, l", Value: "8080", Usage: "tunnel local port"}
+	TunnelRemotePort = cli.StringFlag{Name: "remote-port, r", Value: "8080", Usage: "tunnel remote port"}
 )
 
 func Ping(c *cli.Context) {
@@ -23,18 +25,20 @@ func Ping(c *cli.Context) {
 	if err := DefaultSsh.Ping(data); err != nil {
 		logger.Fatalf("error while connecting to %v'\n%v", c, err)
 	} else {
-		logger.Printf("OK")
+		logger.Printf("ping successful.")
 	}
 }
 
 func Connect(c *cli.Context) {
 	data := ReadConnectionData(c)
+	tunnel := ReadTunnelPorts(c)
+
 	client, err := DefaultSsh.Connect(data)
 	if err != nil {
 		logger.Fatalf("error while connecting to %s\n%v", data.String(), err)
 	}
 
-	listener, err := client.Listen("tcp", "0.0.0.0:8080")
+	listener, err := client.Listen("tcp", tunnel.RemoteConnectionString())
 	if err != nil {
 		logger.Fatalf("error while opening port 8080 on remote host\n%v", err)
 	}
@@ -47,7 +51,7 @@ func Connect(c *cli.Context) {
 		}
 
 		go func(cx net.Conn) {
-			local, err := net.Dial("tcp", "localhost:8080")
+			local, err := net.Dial("tcp", tunnel.LocalConnectionString())
 			if err != nil {
 				logger.Fatalf("error while connecting to localhost:8080\n%v", err)
 			}
@@ -87,11 +91,10 @@ func main() {
 			Action:  Ping,
 		},
 		{
-			Name:    "connect",
-			Aliases: []string{"add"},
-			Usage:   "connects to the remote host ",
-			Flags:   []cli.Flag{SshKeyFlag, SshHostFlag, SshPortFlag, SshUserFlag},
-			Action:  Connect,
+			Name:   "connect",
+			Usage:  "connects to the remote host ",
+			Flags:  []cli.Flag{SshKeyFlag, SshHostFlag, SshPortFlag, SshUserFlag, TunnelLocalPort, TunnelRemotePort},
+			Action: Connect,
 		},
 	}
 	app.Run(os.Args)
